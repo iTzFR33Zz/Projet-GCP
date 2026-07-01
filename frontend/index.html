@@ -78,25 +78,27 @@
 
         function testRoute(endpoint) {
             const baseUrl = getBackendUrl();
-            printConsole("Requête en cours vers " + baseUrl + endpoint + " ...");
+            const fullUrl = baseUrl + endpoint;
+            printConsole("Requête en cours...\n\n🔗 URL appelée :\nGET " + fullUrl);
             
-            fetch(baseUrl + endpoint)
+            fetch(fullUrl)
                 .then(res => {
                     if (!res.ok) throw new Error("HTTP Error " + res.status);
                     return res.json();
                 })
-                .then(data => printConsole(data))
+                .then(data => printConsole("✅ SUCCÈS - " + fullUrl + "\n\n" + JSON.stringify(data, null, 2)))
                 .catch(err => printConsole("Erreur de connexion : " + err.message + "\n\nAvez-vous pensé à activer le package 'cors' sur votre backend Express ?"));
         }
 
         function testPing() {
             const baseUrl = getBackendUrl();
             const ip = encodeURIComponent(document.getElementById('pingIp').value);
-            printConsole("Analyse réseau en cours via l'API...");
+            const fullUrl = baseUrl + "/api/debug-ping?ip=" + ip;
+            printConsole("Analyse réseau en cours...\n\n🔗 URL appelée :\nGET " + fullUrl + "\n\nEn attente de la réponse...");
             
-            fetch(baseUrl + "/api/debug-ping?ip=" + ip)
+            fetch(fullUrl)
                 .then(res => res.json())
-                .then(data => printConsole(data))
+                .then(data => printConsole("Réponse de l'API :\n\n" + JSON.stringify(data, null, 2)))
                 .catch(err => printConsole("Erreur : " + err.message));
         }
 
