@@ -1,0 +1,34 @@
+name: 'Trivy SBOM Scan'
+description: 'Scans a CycloneDX SBOM with Trivy and fails only on CRITICAL vulnerabilities'
+
+inputs:
+  sbom-path:
+    description: 'Path to the CycloneDX JSON SBOM file'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run Trivy SBOM Scan
+      shell: bash
+      run: |
+        echo "Scanning SBOM at ${{ inputs.sbom-path }}"
+        # Téléchargement et installation rapide de Trivy si non présent
+        if ! command -v trivy >/dev/null 2>&1; then
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+        fi
+        
+        # Scan avec échec sur CRITICAL
+        trivy sbom --severity CRITICAL --exit-code 1 "${{ inputs.sbom-path }}"
+        
+        # Scan pour les avertissements sur HIGH et MEDIUM (sans exit-code 1)
+        # On ignore le code de sortie car on ne veut pas bloquer le pipeline
+        trivy sbom --severity HIGH,MEDIUM --exit-code 0 "${{ inputs.sbom-path }}" > trivy-warnings.txt || true
+        
+        # Affichage des warnings dans le résumé GitHub Actions
+        if [ -s trivy-warnings.txt ]; then
+          echo "### ⚠️ Avertissements Trivy (HIGH/MEDIUM)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat trivy-warnings.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+        fi

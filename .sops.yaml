@@ -1,0 +1,3 @@
+creation_rules:
+  - path_regex: \.github/secrets-prod\.yaml$
+    age: 'age1u0ru8hlltda045jl7atglgszw34ktaa0qgdptjq32srj7lu4fd2stpayaj'

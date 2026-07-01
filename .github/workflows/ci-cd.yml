@@ -1,0 +1,178 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [staging, main]
+  pull_request:
+    branches: [staging, main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  security-and-lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # continue-on-error: true est interdit
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  build-and-scan:
+    needs: security-and-lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check paths filter
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+
+      - name: Setup Node.js
+        if: steps.filter.outputs.backend == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'backend/package-lock.json'
+
+      - name: Install dependencies & Run tests
+        if: steps.filter.outputs.backend == 'true'
+        run: |
+          cd backend
+          npm ci
+          npm run test
+
+      - name: Log in to GHCR
+        if: steps.filter.outputs.backend == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Docker Image
+        if: steps.filter.outputs.backend == 'true'
+        run: |
+          docker build -t ghcr.io/${{ github.repository }}/backend:${{ github.sha }} ./backend
+          docker save -o backend-image.tar ghcr.io/${{ github.repository }}/backend:${{ github.sha }}
+
+      - name: Generate SBOM (Syft)
+        if: steps.filter.outputs.backend == 'true'
+        uses: anchore/sbom-action@v0
+        with:
+          image: ghcr.io/${{ github.repository }}/backend:${{ github.sha }}
+          format: cyclonedx-json
+          output-file: sbom.json
+
+      - name: Run Trivy Scan via Composite Action
+        if: steps.filter.outputs.backend == 'true'
+        uses: ./.github/actions/trivy-scan
+        with:
+          sbom-path: sbom.json
+
+      - name: Push to GHCR
+        if: steps.filter.outputs.backend == 'true'
+        run: docker push ghcr.io/${{ github.repository }}/backend:${{ github.sha }}
+
+  deploy-frontend:
+    needs: build-and-scan
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './frontend'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  deploy-backend:
+    needs: build-and-scan
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install SOPS
+        run: |
+          curl -LO https://github.com/getsops/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64
+          mv sops-v3.8.1.linux.amd64 /usr/local/bin/sops
+          chmod +x /usr/local/bin/sops
+
+      - name: Setup Vercel CLI
+        run: npm install -g vercel
+
+      - name: Deploy to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          # Déchiffrement dynamique des secrets et stockage en variables via jq
+          # Aucune écriture de fichier en clair sur le disque
+          SECRETS_JSON=$(sops -d --output-type json .github/secrets-prod.yaml)
+          DB_URL=$(echo $SECRETS_JSON | jq -r .DATABASE_URL)
+          JWT=$(echo $SECRETS_JSON | jq -r .JWT_SECRET)
+
+          # Déploiement Vercel
+          cd backend
+          vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+          vercel build --prod --token=$VERCEL_TOKEN
+          VERCEL_URL=$(vercel deploy --prod --token=$VERCEL_TOKEN --env DATABASE_URL="$DB_URL" --env JWT_SECRET="$JWT")
+          echo "VERCEL_URL=$VERCEL_URL" >> $GITHUB_ENV
+
+      - name: Healthcheck Post-Déploiement
+        run: |
+          echo "Vérification du endpoint /api/health sur $VERCEL_URL..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$VERCEL_URL/api/health")
+          if [ "$STATUS" -ne 200 ]; then
+            echo "Erreur lors du healthcheck: $STATUS"
+            exit 1
+          fi
+          echo "Healthcheck réussi: $STATUS"

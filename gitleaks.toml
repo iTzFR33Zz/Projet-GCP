@@ -1,0 +1,9 @@
+title = "gitleaks config"
+
+[[rules]]
+description = "Détection des tokens d'accès SECWALLET_ avec entropie"
+id = "secwallet-token"
+regex = '''SECWALLET_[A-Z0-9]{24}'''
+entropy = 3.5
+secretGroup = 0
+tags = ["key", "secwallet"]
