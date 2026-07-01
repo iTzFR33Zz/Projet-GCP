@@ -1,12 +1,12 @@
 # Build stage
-FROM node:20-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY . .
 
 # Production stage
-FROM node:20-alpine
+FROM node:24-alpine
 WORKDIR /app
 # Pour la sécurité, on utilise un utilisateur non root
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup

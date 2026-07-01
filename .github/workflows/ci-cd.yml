@@ -32,12 +32,12 @@ jobs:
         # continue-on-error: true est interdit
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: javascript
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
 
   build-and-scan:
     needs: security-and-lint
@@ -61,17 +61,24 @@ jobs:
         if: steps.filter.outputs.backend == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: 'backend/package-lock.json'
 
       - name: Install dependencies & Run tests
         if: steps.filter.outputs.backend == 'true'
+        env:
+          DATABASE_URL: "mock_db_url"
+          JWT_SECRET: "mock_jwt_secret"
         run: |
           cd backend
           npm ci
           npm run test
 
+      - name: Set lowercase repository name
+        if: steps.filter.outputs.backend == 'true'
+        run: |
+          echo "REPO_LC=${GITHUB_REPOSITORY,,}" >> ${GITHUB_ENV}
       - name: Log in to GHCR
         if: steps.filter.outputs.backend == 'true'
         uses: docker/login-action@v3
@@ -83,14 +90,14 @@ jobs:
       - name: Build Docker Image
         if: steps.filter.outputs.backend == 'true'
         run: |
-          docker build -t ghcr.io/${{ github.repository }}/backend:${{ github.sha }} ./backend
-          docker save -o backend-image.tar ghcr.io/${{ github.repository }}/backend:${{ github.sha }}
+          docker build -t ghcr.io/${{ env.REPO_LC }}/backend:${{ github.sha }} ./backend
+          docker save -o backend-image.tar ghcr.io/${{ env.REPO_LC }}/backend:${{ github.sha }}
 
       - name: Generate SBOM (Syft)
         if: steps.filter.outputs.backend == 'true'
         uses: anchore/sbom-action@v0
         with:
-          image: ghcr.io/${{ github.repository }}/backend:${{ github.sha }}
+          image: ghcr.io/${{ env.REPO_LC }}/backend:${{ github.sha }}
           format: cyclonedx-json
           output-file: sbom.json
 
@@ -102,7 +109,7 @@ jobs:
 
       - name: Push to GHCR
         if: steps.filter.outputs.backend == 'true'
-        run: docker push ghcr.io/${{ github.repository }}/backend:${{ github.sha }}
+        run: docker push ghcr.io/${{ env.REPO_LC }}/backend:${{ github.sha }}
 
   deploy-frontend:
     needs: build-and-scan
