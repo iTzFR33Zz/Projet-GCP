@@ -177,7 +177,7 @@ jobs:
       - name: Healthcheck Post-Déploiement
         run: |
           echo "Vérification du endpoint /api/health sur $VERCEL_URL..."
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$VERCEL_URL/api/health")
+          STATUS=$(curl -s -L -o /dev/null -w "%{http_code}" "$VERCEL_URL/api/health")
           if [ "$STATUS" -ne 200 ]; then
             echo "Erreur lors du healthcheck: $STATUS"
             exit 1
