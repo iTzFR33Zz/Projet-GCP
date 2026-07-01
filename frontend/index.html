@@ -109,7 +109,7 @@
 
         function testWAF() {
             const baseUrl = getBackendUrl();
-            const payload = encodeURIComponent("<script>alert('WAF Bypass attempt')</script>");
+            const payload = encodeURIComponent("<script>alert('WAF Bypass attempt')<\/script>");
             printConsole("Test du WAF : Envoi d'un payload XSS vers /api/health ...");
             
             fetch(baseUrl + "/api/health?malicious=" + payload)
