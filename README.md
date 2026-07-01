@@ -169,3 +169,6 @@ L'injection d'une commande système dans le champ de ping permet d'exécuter du 
 ### 2. Personnalisation du Profil (Injection XSS / SQL)
 L'exploitation du champ de personnalisation du profil montre que la faille d'injection est bien active et permet d'altérer le comportement prévu de l'application.
 ![Exploitation de l'injection](Injection.png)
+
+Le payload XSS ci-dessous a été exécuté avec succès :
+![Résultat de l'attaque XSS (Hacked)](Hacked.png)
