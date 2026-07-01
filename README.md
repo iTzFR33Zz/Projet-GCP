@@ -156,4 +156,4 @@ Erreur Gitleaks : des secrets ont été détectés. Opération annulée.
 
 Voici la preuve finale du bon fonctionnement de notre infrastructure Cloud (Frontend hébergé sur GitHub Pages et API Node.js déployée sur Vercel avec chargement des secrets sécurisés) :
 
-![Preuve de l'application fonctionnelle avec statut UP](preuve-fonctionnelle.png)
+![Preuve de l'application fonctionnelle avec statut UP](image.png)
