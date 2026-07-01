@@ -67,6 +67,9 @@ jobs:
 
       - name: Install dependencies & Run tests
         if: steps.filter.outputs.backend == 'true'
+        env:
+          DATABASE_URL: "mock_db_url"
+          JWT_SECRET: "mock_jwt_secret"
         run: |
           cd backend
           npm ci
