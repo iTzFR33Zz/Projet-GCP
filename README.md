@@ -30,6 +30,52 @@ L'intégrité est validée directement sur le poste de travail du développeur a
 2. **Gitleaks personnalisé** : Analyse exclusive des fichiers prêts à être committés. Une règle sur-mesure (`gitleaks.toml`) intercepte spécifiquement les jetons au format `SECWALLET_[A-Z0-9]{24}` avec vérification d'entropie.
 3. **Filtrage des extensions interdites** : Le hook rejette catégoriquement tout fichier se terminant par `.env`, `.pem` ou `.key` avec le message rouge : *"Sécurité : Tentative de commit d'un fichier de configuration ou d'une clé en clair. Opération annulée."*
 
+**Contenu du script `pre-commit` :**
+```bash
+#!/bin/sh
+
+echo "Exécution des vérifications pre-commit (Shift Left)..."
+
+# Vérification de l'existence des commandes
+if ! command -v actionlint >/dev/null 2>&1; then
+    echo "ATTENTION: actionlint n'est pas installé. Ignoré pour ce test, mais recommandé."
+else
+    echo "1. Exécution de actionlint..."
+    if [ -d ".github/workflows/" ]; then
+        actionlint .github/workflows/*
+        if [ $? -ne 0 ]; then
+            echo "Erreur actionlint détectée. Opération annulée."
+            exit 1
+        fi
+    fi
+fi
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+    echo "ATTENTION: gitleaks n'est pas installé. Ignoré pour ce test, mais recommandé."
+else
+    echo "2. Exécution de Gitleaks..."
+    gitleaks protect -v --staged
+    if [ $? -ne 0 ]; then
+        echo "Erreur Gitleaks : des secrets ont été détectés. Opération annulée."
+        exit 1
+    fi
+fi
+
+echo "3. Vérification des extensions interdites..."
+# On liste les fichiers en zone d'index (staged)
+STAGED_FILES=$(git diff --cached --name-only)
+
+for FILE in $STAGED_FILES; do
+    if echo "$FILE" | grep -Eq "\.env$|\.pem$|\.key$"; then
+        echo "Sécurité : Tentative de commit d'un fichier de configuration ou d'une clé en clair. Opération annulée."
+        exit 1
+    fi
+done
+
+echo "Vérifications pre-commit terminées avec succès."
+exit 0
+```
+
 ## 🔐 Gestion Cryptographique des Secrets (GitOps)
 
 Aucun secret n'est stocké en clair. Le projet utilise la cryptographie asymétrique via l'utilitaire **Age** et **Mozilla SOPS** :
