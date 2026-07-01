@@ -44,6 +44,14 @@
         <h4>2. Personnalisation du Profil (Route vulnérable XSS)</h4>
         <input type="text" id="xssName" value="John Doe" placeholder="Ex: <script>alert('Hacked')</script>">
         <button onclick="testWelcome()">Générer la page</button>
+
+        <h4>3. Test du WAF (Nouveau !)</h4>
+        <p style="font-size: 13px;">Tente d'injecter du code malveillant sur une route standard (non bypassée).</p>
+        <div style="background: #f6f8fa; padding: 10px; border-radius: 4px; font-size: 13px; margin-bottom: 10px; font-family: monospace;">
+            <strong>Payload envoyé :</strong> &lt;script&gt;alert('WAF Bypass attempt')&lt;/script&gt;<br>
+            <strong>URL ciblée :</strong> GET /api/health?malicious=[payload]
+        </div>
+        <button onclick="testWAF()">Tester le pare-feu</button>
     </div>
 
     <div class="card">
@@ -74,25 +82,27 @@
 
         function testRoute(endpoint) {
             const baseUrl = getBackendUrl();
-            printConsole("Requête en cours vers " + baseUrl + endpoint + " ...");
+            const fullUrl = baseUrl + endpoint;
+            printConsole("Requête en cours...\n\n🔗 URL appelée :\nGET " + fullUrl);
             
-            fetch(baseUrl + endpoint)
+            fetch(fullUrl)
                 .then(res => {
                     if (!res.ok) throw new Error("HTTP Error " + res.status);
                     return res.json();
                 })
-                .then(data => printConsole(data))
+                .then(data => printConsole("✅ SUCCÈS - " + fullUrl + "\n\n" + JSON.stringify(data, null, 2)))
                 .catch(err => printConsole("Erreur de connexion : " + err.message + "\n\nAvez-vous pensé à activer le package 'cors' sur votre backend Express ?"));
         }
 
         function testPing() {
             const baseUrl = getBackendUrl();
             const ip = encodeURIComponent(document.getElementById('pingIp').value);
-            printConsole("Analyse réseau en cours via l'API...");
+            const fullUrl = baseUrl + "/api/debug-ping?ip=" + ip;
+            printConsole("Analyse réseau en cours...\n\n🔗 URL appelée :\nGET " + fullUrl + "\n\nEn attente de la réponse...");
             
-            fetch(baseUrl + "/api/debug-ping?ip=" + ip)
+            fetch(fullUrl)
                 .then(res => res.json())
-                .then(data => printConsole(data))
+                .then(data => printConsole("Réponse de l'API :\n\n" + JSON.stringify(data, null, 2)))
                 .catch(err => printConsole("Erreur : " + err.message));
         }
 
@@ -101,6 +111,24 @@
             const name = document.getElementById('xssName').value;
             // Ouverture dans un nouvel onglet pour exécuter le potentiel script XSS (Reflected XSS)
             window.open(baseUrl + "/api/welcome?name=" + encodeURIComponent(name), '_blank');
+        }
+
+        function testWAF() {
+            const baseUrl = getBackendUrl();
+            const payload = encodeURIComponent("<script>alert('WAF Bypass attempt')<\/script>");
+            const fullUrl = baseUrl + "/api/health?malicious=" + payload;
+            
+            printConsole("Test du WAF en cours...\n\n🔗 URL appelée :\nGET " + fullUrl + "\n\n💉 Payload malveillant injecté :\n" + decodeURIComponent(payload) + "\n\nEn attente de la réponse du serveur...");
+            
+            fetch(fullUrl)
+                .then(res => {
+                    if (res.status === 403) {
+                        return res.json().then(data => printConsole("✅ SUCCÈS (WAF) : L'attaque a été bloquée avec le code 403 !\n\nRéponse du serveur :\n" + JSON.stringify(data, null, 2)));
+                    }
+                    if (!res.ok) throw new Error("HTTP Error " + res.status);
+                    return res.json().then(data => printConsole("❌ ÉCHEC (WAF) : L'attaque est passée...\n\n" + JSON.stringify(data, null, 2)));
+                })
+                .catch(err => printConsole("Erreur de connexion : " + err.message));
         }
     </script>
 </body>
