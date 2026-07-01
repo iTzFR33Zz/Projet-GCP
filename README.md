@@ -4,7 +4,26 @@ Bienvenue sur le dépôt officiel du projet DevSecOps. Ce projet a pour but d'il
 
 ## 🏗️ Architecture du Projet (Monorepo)
 
-Le dépôt est scindé en deux composants distincts :
+Voici l'arborescence principale du projet :
+
+```text
+projetfinal/
+├── .github/                  # Workflows CI/CD et Actions
+├── backend/                  # API REST Node.js (Vercel)
+│   ├── src/                  # Code source de l'API
+│   ├── tests/                # Tests
+│   ├── Dockerfile            # Conteneurisation de l'API
+│   └── vercel.json           # Configuration Serverless
+├── frontend/                 # Application Single Page (GitHub Pages)
+│   └── index.html            # Interface utilisateur
+├── skeleton/                 # Code de base / Laboratoire
+├── .sops.yaml                # Configuration Mozilla SOPS
+├── gitleaks.toml             # Règles de sécurité Gitleaks
+├── ops.txt / ops.pub         # Clés cryptographiques Age
+└── README.md                 # Ce fichier
+```
+
+Le dépôt est scindé en deux composants principaux :
 
 1. **`/frontend`** : Une Single Page Application (SPA) HTML/CSS/JS pur. 
    - Déploiement : **GitHub Pages** (via l'API moderne d'artefacts GitHub Actions).
