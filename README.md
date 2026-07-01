@@ -4,7 +4,26 @@ Bienvenue sur le dépôt officiel du projet DevSecOps. Ce projet a pour but d'il
 
 ## 🏗️ Architecture du Projet (Monorepo)
 
-Le dépôt est scindé en deux composants distincts :
+Voici l'arborescence principale du projet :
+
+```text
+projetfinal/
+├── .github/                  # Workflows CI/CD et Actions
+├── backend/                  # API REST Node.js (Vercel)
+│   ├── src/                  # Code source de l'API
+│   ├── tests/                # Tests
+│   ├── Dockerfile            # Conteneurisation de l'API
+│   └── vercel.json           # Configuration Serverless
+├── frontend/                 # Application Single Page (GitHub Pages)
+│   └── index.html            # Interface utilisateur
+├── skeleton/                 # Code de base / Laboratoire
+├── .sops.yaml                # Configuration Mozilla SOPS
+├── gitleaks.toml             # Règles de sécurité Gitleaks
+├── ops.txt / ops.pub         # Clés cryptographiques Age
+└── README.md                 # Ce fichier
+```
+
+Le dépôt est scindé en deux composants principaux :
 
 1. **`/frontend`** : Une Single Page Application (SPA) HTML/CSS/JS pur. 
    - Déploiement : **GitHub Pages** (via l'API moderne d'artefacts GitHub Actions).
@@ -29,6 +48,52 @@ L'intégrité est validée directement sur le poste de travail du développeur a
 1. **Actionlint** : Vérification de la syntaxe des workflows dans `.github/workflows/`.
 2. **Gitleaks personnalisé** : Analyse exclusive des fichiers prêts à être committés. Une règle sur-mesure (`gitleaks.toml`) intercepte spécifiquement les jetons au format `SECWALLET_[A-Z0-9]{24}` avec vérification d'entropie.
 3. **Filtrage des extensions interdites** : Le hook rejette catégoriquement tout fichier se terminant par `.env`, `.pem` ou `.key` avec le message rouge : *"Sécurité : Tentative de commit d'un fichier de configuration ou d'une clé en clair. Opération annulée."*
+
+**Contenu du script `pre-commit` :**
+```bash
+#!/bin/sh
+
+echo "Exécution des vérifications pre-commit (Shift Left)..."
+
+# Vérification de l'existence des commandes
+if ! command -v actionlint >/dev/null 2>&1; then
+    echo "ATTENTION: actionlint n'est pas installé. Ignoré pour ce test, mais recommandé."
+else
+    echo "1. Exécution de actionlint..."
+    if [ -d ".github/workflows/" ]; then
+        actionlint .github/workflows/*
+        if [ $? -ne 0 ]; then
+            echo "Erreur actionlint détectée. Opération annulée."
+            exit 1
+        fi
+    fi
+fi
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+    echo "ATTENTION: gitleaks n'est pas installé. Ignoré pour ce test, mais recommandé."
+else
+    echo "2. Exécution de Gitleaks..."
+    gitleaks protect -v --staged
+    if [ $? -ne 0 ]; then
+        echo "Erreur Gitleaks : des secrets ont été détectés. Opération annulée."
+        exit 1
+    fi
+fi
+
+echo "3. Vérification des extensions interdites..."
+# On liste les fichiers en zone d'index (staged)
+STAGED_FILES=$(git diff --cached --name-only)
+
+for FILE in $STAGED_FILES; do
+    if echo "$FILE" | grep -Eq "\.env$|\.pem$|\.key$"; then
+        echo "Sécurité : Tentative de commit d'un fichier de configuration ou d'une clé en clair. Opération annulée."
+        exit 1
+    fi
+done
+
+echo "Vérifications pre-commit terminées avec succès."
+exit 0
+```
 
 ## 🔐 Gestion Cryptographique des Secrets (GitOps)
 
