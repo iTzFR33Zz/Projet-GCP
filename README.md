@@ -157,3 +157,18 @@ Erreur Gitleaks : des secrets ont été détectés. Opération annulée.
 Voici la preuve finale du bon fonctionnement de notre infrastructure Cloud (Frontend hébergé sur GitHub Pages et API Node.js déployée sur Vercel avec chargement des secrets sécurisés) :
 
 ![Preuve de l'application fonctionnelle avec statut UP](image.png)
+
+## 🎯 Preuves d'Exploitation des Failles (Laboratoire)
+
+Voici les captures d'écran démontrant le bon fonctionnement du laboratoire d'exploitation sur l'infrastructure Vercel :
+
+### 1. Diagnostic Réseau (Exécution de Commandes - RCE)
+L'injection d'une commande système dans le champ de ping permet d'exécuter du code arbitraire directement sur le serveur Vercel.
+![Exécution d'une commande sur la machine](Command.png)
+
+### 2. Personnalisation du Profil (Injection XSS / SQL)
+L'exploitation du champ de personnalisation du profil montre que la faille d'injection est bien active et permet d'altérer le comportement prévu de l'application.
+![Exploitation de l'injection](Injection.png)
+
+Le payload XSS ci-dessous a été exécuté avec succès :
+![Résultat de l'attaque XSS (Hacked)](Hacked.png)
