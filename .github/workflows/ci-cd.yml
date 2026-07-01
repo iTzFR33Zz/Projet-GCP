@@ -117,7 +117,7 @@ jobs:
 
   deploy-frontend:
     needs: build-and-scan
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/firewall'
     runs-on: ubuntu-latest
     environment: production
     permissions:
@@ -142,7 +142,7 @@ jobs:
 
   deploy-backend:
     needs: build-and-scan
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/firewall'
     runs-on: ubuntu-latest
     environment: production
     steps:
