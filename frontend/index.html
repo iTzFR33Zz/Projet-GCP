@@ -47,6 +47,10 @@
 
         <h4>3. Test du WAF (Nouveau !)</h4>
         <p style="font-size: 13px;">Tente d'injecter du code malveillant sur une route standard (non bypassée).</p>
+        <div style="background: #f6f8fa; padding: 10px; border-radius: 4px; font-size: 13px; margin-bottom: 10px; font-family: monospace;">
+            <strong>Payload envoyé :</strong> &lt;script&gt;alert('WAF Bypass attempt')&lt;/script&gt;<br>
+            <strong>URL ciblée :</strong> GET /api/health?malicious=[payload]
+        </div>
         <button onclick="testWAF()">Tester le pare-feu</button>
     </div>
 
