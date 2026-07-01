@@ -237,3 +237,9 @@ L'exploitation du champ de personnalisation du profil montre que la faille d'inj
 
 Le payload XSS ci-dessous a été exécuté avec succès :
 ![Résultat de l'attaque XSS (Hacked)](Hacked.png)
+
+### 3. Pare-feu Applicatif (WAF)
+Pour corriger ces failles (tout en préservant le laboratoire), un **WAF** a été implémenté sur l'API (via `helmet`, `express-rate-limit`, et une analyse personnalisée des requêtes).
+Il filtre dynamiquement les payloads (XSS, injections de commandes) et renvoie un `403 Forbidden`. Les routes volontairement vulnérables sont bypassées.
+Voici la preuve de l'interception et du blocage réussi d'une attaque XSS sur une route standard :
+![Preuve du blocage par le WAF](WAF.png)
