@@ -2,11 +2,11 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [staging, main]
+    branches: [staging, main, firewall]
     paths-ignore:
       - 'README.md'
   pull_request:
-    branches: [staging, main]
+    branches: [staging, main, firewall]
     paths-ignore:
       - 'README.md'
 
